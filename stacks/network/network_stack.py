@@ -1,12 +1,12 @@
 from constructs import Construct
 from aws_cdk import (
-    Duration,
     CfnParameter,
     Stack,
     aws_ec2 as ec2,
     CfnOutput,
     Tags
 )
+
 
 class NetworkStack(Stack):
 
@@ -63,6 +63,9 @@ class NetworkStack(Stack):
         CfnOutput(self, "PublicSubnetCount", value=str(len(self.vpc.public_subnets)))
         CfnOutput(self, "PrivateSubnetCount", value=str(len(self.vpc.private_subnets)))
         CfnOutput(self, "IsolatedSubnetCount", value=str(len(self.vpc.isolated_subnets)))
+        CfnOutput(self, "PrivateSubnetIds", value=",".join([subnet.subnet_id for subnet in self.vpc.private_subnets]))
+        CfnOutput(self, "IsolatedSubnetIds", value=",".join([subnet.subnet_id for subnet in self.vpc.isolated_subnets]))
+        
     
     def resource_tags(self):
         """Tag subnets with meaningful names"""
