@@ -74,11 +74,15 @@ class NetworkStack(Stack):
             az_index = self.vpc.availability_zones.index(subnet.availability_zone)
             az_letter = chr(ord('A') + az_index)  # Convert index to letter (0 -> A, 1 -> B, etc.)
             Tags.of(subnet).add("Name", f"{self.vpc_name_param}-Public-{az_letter}")
+            Tags.of(subnet).add(f"kubernetes.io/cluster/{self.vpc_name_param}", "shared")
+            Tags.of(subnet).add("kubernetes.io/role/elb", "1")
         
         for subnet in self.vpc.private_subnets:
             az_index = self.vpc.availability_zones.index(subnet.availability_zone)
             az_letter = chr(ord('A') + az_index)
             Tags.of(subnet).add("Name", f"{self.vpc_name_param}-Workers-{az_letter}")
+            Tags.of(subnet).add(f"kubernetes.io/cluster/{self.vpc_name_param}", "shared")
+            Tags.of(subnet).add("kubernetes.io/role/internal-elb", "1")
         
         for subnet in self.vpc.isolated_subnets:
             az_index = self.vpc.availability_zones.index(subnet.availability_zone)
