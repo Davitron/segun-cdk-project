@@ -1,0 +1,12 @@
+[MASTER]
+ignore=.venv,__pycache__,.git,.pytest_cache,cdk.out
+recursive=yes
+jobs=1
+
+max-line-length=150
+
+[REPORTS]
+output-format=colorized
+
+[MESSAGES CONTROL]
+disable=redefined-outer-name

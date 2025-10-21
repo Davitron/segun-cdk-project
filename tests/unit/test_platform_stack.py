@@ -1,12 +1,20 @@
+"""Unit tests for NginxIngressStack platform resources.
+
+Tests the nginx ingress controller Helm deployment including Lambda function,
+custom resource provider, and Helm chart configuration. Validates that all
+platform resources are correctly synthesized with proper dependencies.
+"""
+
 import aws_cdk as cdk
-from aws_cdk.assertions import Template, Capture, Match
-from aws_cdk import aws_ec2 as ec2, aws_eks as eks
+from aws_cdk.assertions import Template
+
 from stacks.network.network_stack import NetworkStack
 from stacks.cluster.cluster_stacks import ClusterStack
 from stacks.platform.nginx_ingress_stack import NginxIngressStack
 
 
 def synth_platform_stack():
+    """Synthesize platform stack with network and cluster dependencies for testing."""
     app = cdk.App()
     env = cdk.Environment(account="111111111111", region="eu-west-1")
     network_stack = NetworkStack(app, "NetworkStackTest", env=env)
@@ -19,6 +27,7 @@ def synth_platform_stack():
 
 
 def test_lambda_function_exists():
+    """Test Lambda function for replica count custom resource is created."""
     _, template = synth_platform_stack()
     template.has_resource_properties("AWS::Lambda::Function", {
         "Handler": "handler.on_event"
@@ -26,11 +35,13 @@ def test_lambda_function_exists():
 
 
 def test_custom_resource_exists():
+    """Test custom resource is created for dynamic replica count retrieval."""
     _, template = synth_platform_stack()
     template.has_resource("AWS::CloudFormation::CustomResource", {})
 
 
 def test_helm_chart_exists():
+    """Test Helm chart resource for nginx-ingress is created with correct release name."""
     _, template = synth_platform_stack()
     # HelmChart is synthesized as a Custom::AWS resource. Check presence with release name in properties
     template.has_resource_properties("Custom::AWSCDK-EKS-HelmChart", {

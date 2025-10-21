@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""CDK application entrypoint.
+
+Defines and synthesizes the infrastructure stacks for the platform:
+1. NetworkStack: VPC and subnet tagging for EKS / ELB discovery.
+2. ClusterStack: EKS cluster (v1.33), managed node group, access configuration.
+3. NginxIngressStack: Ingress controller Helm chart with dynamic replica custom resource.
+"""
 
 import aws_cdk as cdk
 from stacks.network.network_stack import NetworkStack
@@ -13,7 +20,7 @@ env = cdk.Environment(
 )
 
 # Create network stack
-network_stack = NetworkStack(app, "NetworkStack", 
+network_stack = NetworkStack(app, "NetworkStack",
     vpc_cidr="172.16.0.0/16",
     env=env
 )

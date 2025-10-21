@@ -1,3 +1,11 @@
+"""Network stack module.
+
+Defines the VPC infrastructure with multi-AZ subnets for the EKS platform:
+- Public subnets for load balancers (tagged for kubernetes.io/role/elb)
+- Private subnets with egress for worker nodes (tagged for kubernetes.io/role/internal-elb)
+- Kubernetes cluster discovery tags (kubernetes.io/cluster/<VpcName>=shared)
+"""
+
 from constructs import Construct
 from aws_cdk import (
     CfnParameter,
@@ -9,25 +17,26 @@ from aws_cdk import (
 
 
 class NetworkStack(Stack):
+    """CDK Stack for VPC and networking resources.
 
-    def __init__(self, scope: Construct, id: str, vpc_cidr: str = "172.16.0.0/16", **kwargs) -> None:
-        super().__init__(scope, id, **kwargs)
-        
+    Creates a multi-AZ VPC with public and private subnets, tagging subnets
+    for Kubernetes ELB discovery
+    """
+
+    def __init__(self, scope: Construct,
+            construct_id: str,
+            vpc_cidr: str = "172.16.0.0/16",
+            **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
         self.vpc_name_param = CfnParameter(self, "VpcName",
             type="String",
             description="The name of the VPC",
             default="SwisscomVPC"
         ).value_as_string
-        
-        
-        # Debug: Print available AZs to see what your account has access to
-        print(f"Account available AZs: {self.availability_zones}")
-        print(f"Using AZs: {self.availability_zones[:3]}")
-        
 
         self.vpc = ec2.Vpc(self, "SwisscomVPC",
             ip_addresses=ec2.IpAddresses.cidr(vpc_cidr),
-            max_azs=3,  # Now this will work since we specified the environment
+            max_azs=3,
             enable_dns_hostnames=True,
             enable_dns_support=True,
             vpc_name=self.vpc_name_param,
@@ -50,7 +59,6 @@ class NetworkStack(Stack):
             ],
         )
 
-        # Apply custom resource tags
         self.resource_tags()
 
         CfnOutput(self, "VpcId", value=self.vpc.vpc_id)
@@ -58,9 +66,11 @@ class NetworkStack(Stack):
         CfnOutput(self, "PublicSubnetCount", value=str(len(self.vpc.public_subnets)))
         CfnOutput(self, "PrivateSubnetCount", value=str(len(self.vpc.private_subnets)))
         CfnOutput(self, "IsolatedSubnetCount", value=str(len(self.vpc.isolated_subnets)))
-        CfnOutput(self, "PrivateSubnetIds", value=",".join([subnet.subnet_id for subnet in self.vpc.private_subnets]))
-        
-    
+        CfnOutput(self,
+            "PrivateSubnetIds",
+            value=",".join([subnet.subnet_id for subnet in self.vpc.private_subnets])
+        )
+
     def resource_tags(self):
         """Tag subnets with meaningful names"""
         # Tag subnets with meaningful names
@@ -70,12 +80,10 @@ class NetworkStack(Stack):
             Tags.of(subnet).add("Name", f"{self.vpc_name_param}-Public-{az_letter}")
             Tags.of(subnet).add(f"kubernetes.io/cluster/{self.vpc_name_param}", "shared")
             Tags.of(subnet).add("kubernetes.io/role/elb", "1")
-        
+
         for subnet in self.vpc.private_subnets:
             az_index = self.vpc.availability_zones.index(subnet.availability_zone)
             az_letter = chr(ord('A') + az_index)
             Tags.of(subnet).add("Name", f"{self.vpc_name_param}-Workers-{az_letter}")
             Tags.of(subnet).add(f"kubernetes.io/cluster/{self.vpc_name_param}", "shared")
             Tags.of(subnet).add("kubernetes.io/role/internal-elb", "1")
-        
-
