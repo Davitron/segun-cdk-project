@@ -1,29 +1,51 @@
+"""Nginx Ingress Controller platform stack module.
+
+Deploys the nginx ingress controller to EKS via Helm chart with:
+- Lambda-based custom resource for dynamic replica count (reads SSM parameter)
+- Environment-aware scaling (development: 1 replica, staging/production: 2 replicas)
+- LoadBalancer service type for external traffic
+- CloudFormation custom resource provider framework
+"""
+
+import os
 from constructs import Construct
 from aws_cdk import (
     Stack,
     Duration,
     aws_eks as eks,
     aws_lambda as _lambda,
-    aws_ec2 as ec2,
     aws_iam as iam,
-    aws_ssm as ssm,
     aws_logs as logs,
     custom_resources as cr,
     Token,
     CustomResource,
 )
-import os
 
 
 class NginxIngressStack(Stack):
-    def __init__(self, scope: Construct, id: str, *, 
+    """CDK Stack for Nginx Ingress Controller deployment.
+
+    Orchestrates Helm chart installation with a custom resource to dynamically
+    determine replica count based on environment parameter stored in SSM.
+    """
+
+    def __init__(self, scope: Construct, construct_id: str, *,
                  cluster: eks.Cluster,
                  **kwargs) -> None:
-        super().__init__(scope, id, **kwargs)
-        
+        super().__init__(scope, construct_id, **kwargs)
+
         self.deploy_ingress_controller(cluster)
 
     def deploy_ingress_controller(self, cluster: eks.Cluster):
+        """Deploy nginx ingress controller using Helm with dynamic replica count.
+
+        Creates a Lambda function and custom resource to retrieve environment-specific
+        replica count from SSM, then installs the ingress-nginx Helm chart with the
+        computed replica value.
+
+        Args:
+            cluster: The EKS cluster to deploy the ingress controller to.
+        """
         lambda_role = iam.Role(
             self,
             "NginxReplicaLambdaRole",

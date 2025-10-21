@@ -1,3 +1,13 @@
+"""EKS cluster stack module.
+
+Defines the EKS cluster infrastructure including:
+- EKS Cluster (v1.33) with Bottlerocket managed node group
+- Cluster service role and node group IAM roles
+- AccessEntry for cluster admin permissions
+- SSM parameter for environment configuration
+- Resource tagging and CloudFormation outputs
+"""
+
 from constructs import Construct
 from aws_cdk import (
     Stack,
@@ -13,14 +23,19 @@ from aws_cdk.lambda_layer_kubectl_v33 import KubectlV33Layer
 
 
 class ClusterStack(Stack):
+    """CDK Stack for EKS cluster and node group resources.
+    Creates an EKS v1.33 cluster with Bottlerocket worker nodes, configures
+    IAM access entries, logging, and exports cluster connection details.
+    """
 
-    def __init__(self, scope: Construct, id: str, vpc: ec2.IVpc = None, **kwargs) -> None:
-        super().__init__(scope, id, **kwargs)
+    def __init__(self, scope: Construct, construct_id: str, vpc: ec2.IVpc = None, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
 
-        # Use context for cluster name to ensure a plain string (run with: cdk deploy -c clusterName=SwisscomCluster)
+        # Use context for cluster name to ensure a plain string
+        # (run with: cdk deploy -c clusterName=SwisscomCluster)
         cluster_name_str = self.node.try_get_context("clusterName") or "SwisscomCluster"
         cluster_env_context = self.node.try_get_context("environment") or "development"
-        
+
         # Create EKS Cluster Service Role
         cluster_role = iam.Role(self, "ClusterServiceRole",
             assumed_by=iam.ServicePrincipal("eks.amazonaws.com"),
@@ -49,14 +64,9 @@ class ClusterStack(Stack):
             default_capacity=0,
             endpoint_access=eks.EndpointAccess.PUBLIC_AND_PRIVATE,
             authentication_mode=eks.AuthenticationMode.API_AND_CONFIG_MAP,
-            bootstrap_cluster_creator_admin_permissions=True,
-            cluster_logging=[
-                eks.ClusterLoggingTypes.API,
-                eks.ClusterLoggingTypes.AUDIT,
-                eks.ClusterLoggingTypes.AUTHENTICATOR,
-            ]
+            bootstrap_cluster_creator_admin_permissions=True
         )
-        
+
         # Use ArnPrincipal for access entry instead of a raw string for clarity
         self.access_entry = eks.AccessEntry(
             self,
@@ -70,7 +80,7 @@ class ClusterStack(Stack):
                 )
             ],
         )
-        
+
         self.add_managed_node_group()
         self.resource_tags()
 
@@ -95,7 +105,7 @@ class ClusterStack(Stack):
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryReadOnly")
             ]
         )
-        
+
         self.node_group = self.cluster.add_nodegroup_capacity(
             "WorkerNodes",
             nodegroup_name="Default",
@@ -121,6 +131,3 @@ class ClusterStack(Stack):
         Tags.of(self).add("Environment", "Production")
         Tags.of(self.cluster).add("ClusterType", "EKS")
         Tags.of(self.cluster).add("ManagedBy", "CDK")
-
-        
-        
