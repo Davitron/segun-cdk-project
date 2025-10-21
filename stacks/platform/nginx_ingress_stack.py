@@ -35,7 +35,7 @@ class NginxIngressStack(Stack):
         )
 
 
-        lambda_path = os.path.join(os.path.dirname(__file__), '../../assets/lambda')
+        lambda_path = os.path.join(os.path.dirname(__file__), '../../assets/_lambda')
         lambda_fn = _lambda.Function(self, "NginxReplicaLambda",
             runtime=_lambda.Runtime.PYTHON_3_13,
             handler="handler.on_event",
