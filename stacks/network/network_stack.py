@@ -46,11 +46,6 @@ class NetworkStack(Stack):
                     name="Workers",
                     subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS,
                     cidr_mask=20
-                ),
-                ec2.SubnetConfiguration(
-                    name="ControlPlane",
-                    subnet_type=ec2.SubnetType.PRIVATE_ISOLATED,
-                    cidr_mask=24
                 )
             ],
         )
@@ -64,7 +59,6 @@ class NetworkStack(Stack):
         CfnOutput(self, "PrivateSubnetCount", value=str(len(self.vpc.private_subnets)))
         CfnOutput(self, "IsolatedSubnetCount", value=str(len(self.vpc.isolated_subnets)))
         CfnOutput(self, "PrivateSubnetIds", value=",".join([subnet.subnet_id for subnet in self.vpc.private_subnets]))
-        CfnOutput(self, "IsolatedSubnetIds", value=",".join([subnet.subnet_id for subnet in self.vpc.isolated_subnets]))
         
     
     def resource_tags(self):
@@ -84,8 +78,4 @@ class NetworkStack(Stack):
             Tags.of(subnet).add(f"kubernetes.io/cluster/{self.vpc_name_param}", "shared")
             Tags.of(subnet).add("kubernetes.io/role/internal-elb", "1")
         
-        for subnet in self.vpc.isolated_subnets:
-            az_index = self.vpc.availability_zones.index(subnet.availability_zone)
-            az_letter = chr(ord('A') + az_index)
-            Tags.of(subnet).add("Name", f"{self.vpc_name_param}-ControlPlane-{az_letter}")
 

@@ -1,4 +1,4 @@
-import boto3, os, json, traceback
+import boto3, os, traceback
 from botocore.exceptions import ClientError, BotoCoreError
 
 ssm = boto3.client("ssm")
@@ -40,7 +40,6 @@ def on_event(event, context):
     # For Delete, return a stable physical id and a safe default
     if request_type == "Delete":
         return {
-            "PhysicalResourceId": param_name,
             "Data": {"ReplicaCount": 1},
         }
 
@@ -50,7 +49,6 @@ def on_event(event, context):
 
     # Return numeric value (CloudFormation will treat it as a primitive via get_att)
     return {
-        "PhysicalResourceId": param_name,
         "Data": {
             "ReplicaCount": replica_count,
             "EnvironmentValue": env_value,
