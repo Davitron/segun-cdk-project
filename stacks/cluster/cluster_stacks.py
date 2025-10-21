@@ -4,6 +4,7 @@ from aws_cdk import (
     aws_eks as eks,
     aws_ec2 as ec2,
     aws_iam as iam,
+    aws_ssm as ssm,
     CfnOutput,
     Tags
 )
@@ -18,6 +19,7 @@ class ClusterStack(Stack):
 
         # Use context for cluster name to ensure a plain string (run with: cdk deploy -c clusterName=SwisscomCluster)
         cluster_name_str = self.node.try_get_context("clusterName") or "SwisscomCluster"
+        cluster_env_context = self.node.try_get_context("environment") or "development"
         
         # Create EKS Cluster Service Role
         cluster_role = iam.Role(self, "ClusterServiceRole",
@@ -26,8 +28,13 @@ class ClusterStack(Stack):
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEKSClusterPolicy")
             ]
         )
-        
-        
+
+
+        ssm.StringParameter(self, "ClusterEnvParameter",
+            parameter_name="/platform/account/env",
+            string_value=cluster_env_context
+        )
+
         self.cluster = eks.Cluster(
             self,
             "SwisscomEKSCluster",

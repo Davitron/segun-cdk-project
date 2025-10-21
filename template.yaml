@@ -1,448 +1,777 @@
 Account available AZs: ['eu-west-1a', 'eu-west-1b', 'eu-west-1c']
 Using AZs: ['eu-west-1a', 'eu-west-1b', 'eu-west-1c']
+Parameters:
+  VpcName:
+    Type: String
+    Default: SwisscomVPC
+    Description: The name of the VPC
+  BootstrapVersion:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cdk-bootstrap/hnb659fds/version
+    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]
 Resources:
-  ClusterServiceRoleBFF38747:
-    Type: AWS::IAM::Role
+  SwisscomVPC423AFC06:
+    Type: AWS::EC2::VPC
     Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: eks.amazonaws.com
-        Version: "2012-10-17"
-      ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEKSClusterPolicy
+      CidrBlock: 172.16.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
       Tags:
-        - Key: Environment
-          Value: Production
-        - Key: Project
-          Value: SwisscomAssessment
+        - Key: Name
+          Value:
+            Ref: VpcName
     Metadata:
-      aws:cdk:path: ClusterStack/ClusterServiceRole/Resource
-  Kubectl85A5A23F:
-    Type: AWS::Lambda::LayerVersion
+      aws:cdk:path: NetworkStack/SwisscomVPC/Resource
+  SwisscomVPCPublicSubnet1SubnetAD57BC3B:
+    Type: AWS::EC2::Subnet
     Properties:
-      Content:
-        S3Bucket: cdk-hnb659fds-assets-737247133878-eu-west-1
-        S3Key: e995b7fa13f3d9f946ff291512015444c90346ee68f0067f80037541a4b54d62.zip
-      Description: /opt/kubectl/kubectl 1.33.0; /opt/helm/helm 3.18.0
-      LicenseInfo: Apache-2.0
+      AvailabilityZone: eu-west-1a
+      CidrBlock: 172.16.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Public-A
+      VpcId:
+        Ref: SwisscomVPC423AFC06
     Metadata:
-      aws:cdk:path: ClusterStack/Kubectl/Resource
-      aws:asset:path: asset.e995b7fa13f3d9f946ff291512015444c90346ee68f0067f80037541a4b54d62.zip
-      aws:asset:is-bundled: false
-      aws:asset:property: Content
-  SwisscomEKSClusterKubectlHandlerRole0DF7DC5F:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet1/Subnet
+  SwisscomVPCPublicSubnet1RouteTable4F2DB9FB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Public-A
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet1/RouteTable
+  SwisscomVPCPublicSubnet1RouteTableAssociationB03D5B93:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: SwisscomVPCPublicSubnet1RouteTable4F2DB9FB
+      SubnetId:
+        Ref: SwisscomVPCPublicSubnet1SubnetAD57BC3B
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet1/RouteTableAssociation
+  SwisscomVPCPublicSubnet1DefaultRoute9C6A28F5:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: SwisscomVPCIGWFD8C9F88
+      RouteTableId:
+        Ref: SwisscomVPCPublicSubnet1RouteTable4F2DB9FB
+    DependsOn:
+      - SwisscomVPCVPCGW57F94AAE
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet1/DefaultRoute
+  SwisscomVPCPublicSubnet1EIPC94A5749:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Public-A
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet1/EIP
+  SwisscomVPCPublicSubnet1NATGateway055AF07D:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - SwisscomVPCPublicSubnet1EIPC94A5749
+          - AllocationId
+      SubnetId:
+        Ref: SwisscomVPCPublicSubnet1SubnetAD57BC3B
+      Tags:
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Public-A
+    DependsOn:
+      - SwisscomVPCPublicSubnet1DefaultRoute9C6A28F5
+      - SwisscomVPCPublicSubnet1RouteTableAssociationB03D5B93
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet1/NATGateway
+  SwisscomVPCPublicSubnet2Subnet1DB06E90:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-1b
+      CidrBlock: 172.16.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Public-B
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet2/Subnet
+  SwisscomVPCPublicSubnet2RouteTableD14B28D6:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Public-B
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet2/RouteTable
+  SwisscomVPCPublicSubnet2RouteTableAssociation4682726A:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: SwisscomVPCPublicSubnet2RouteTableD14B28D6
+      SubnetId:
+        Ref: SwisscomVPCPublicSubnet2Subnet1DB06E90
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet2/RouteTableAssociation
+  SwisscomVPCPublicSubnet2DefaultRoute3FE11FE0:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: SwisscomVPCIGWFD8C9F88
+      RouteTableId:
+        Ref: SwisscomVPCPublicSubnet2RouteTableD14B28D6
+    DependsOn:
+      - SwisscomVPCVPCGW57F94AAE
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet2/DefaultRoute
+  SwisscomVPCPublicSubnet3Subnet00821AF8:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-1c
+      CidrBlock: 172.16.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Public-C
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet3/Subnet
+  SwisscomVPCPublicSubnet3RouteTableB311A0C7:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Public-C
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet3/RouteTable
+  SwisscomVPCPublicSubnet3RouteTableAssociationA8A265A7:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: SwisscomVPCPublicSubnet3RouteTableB311A0C7
+      SubnetId:
+        Ref: SwisscomVPCPublicSubnet3Subnet00821AF8
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet3/RouteTableAssociation
+  SwisscomVPCPublicSubnet3DefaultRoute1FEA4560:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: SwisscomVPCIGWFD8C9F88
+      RouteTableId:
+        Ref: SwisscomVPCPublicSubnet3RouteTableB311A0C7
+    DependsOn:
+      - SwisscomVPCVPCGW57F94AAE
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/PublicSubnet3/DefaultRoute
+  SwisscomVPCWorkersSubnet1SubnetD75254CE:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-1a
+      CidrBlock: 172.16.16.0/20
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Workers
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Workers-A
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet1/Subnet
+  SwisscomVPCWorkersSubnet1RouteTable74B2E3BD:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Workers-A
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet1/RouteTable
+  SwisscomVPCWorkersSubnet1RouteTableAssociation15770B40:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: SwisscomVPCWorkersSubnet1RouteTable74B2E3BD
+      SubnetId:
+        Ref: SwisscomVPCWorkersSubnet1SubnetD75254CE
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet1/RouteTableAssociation
+  SwisscomVPCWorkersSubnet1DefaultRoute057E74ED:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: SwisscomVPCPublicSubnet1NATGateway055AF07D
+      RouteTableId:
+        Ref: SwisscomVPCWorkersSubnet1RouteTable74B2E3BD
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet1/DefaultRoute
+  SwisscomVPCWorkersSubnet2SubnetB1A70A6E:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-1b
+      CidrBlock: 172.16.32.0/20
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Workers
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Workers-B
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet2/Subnet
+  SwisscomVPCWorkersSubnet2RouteTableBC3C6848:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Workers-B
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet2/RouteTable
+  SwisscomVPCWorkersSubnet2RouteTableAssociation19F9EF4B:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: SwisscomVPCWorkersSubnet2RouteTableBC3C6848
+      SubnetId:
+        Ref: SwisscomVPCWorkersSubnet2SubnetB1A70A6E
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet2/RouteTableAssociation
+  SwisscomVPCWorkersSubnet2DefaultRouteD80E9483:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: SwisscomVPCPublicSubnet1NATGateway055AF07D
+      RouteTableId:
+        Ref: SwisscomVPCWorkersSubnet2RouteTableBC3C6848
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet2/DefaultRoute
+  SwisscomVPCWorkersSubnet3SubnetE5472EB6:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-1c
+      CidrBlock: 172.16.48.0/20
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Workers
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Workers-C
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet3/Subnet
+  SwisscomVPCWorkersSubnet3RouteTableC7365762:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key:
+            Fn::Join:
+              - ""
+              - - kubernetes.io/cluster/
+                - Ref: VpcName
+          Value: shared
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -Workers-C
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet3/RouteTable
+  SwisscomVPCWorkersSubnet3RouteTableAssociation47E95989:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: SwisscomVPCWorkersSubnet3RouteTableC7365762
+      SubnetId:
+        Ref: SwisscomVPCWorkersSubnet3SubnetE5472EB6
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet3/RouteTableAssociation
+  SwisscomVPCWorkersSubnet3DefaultRoute97C5D881:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: SwisscomVPCPublicSubnet1NATGateway055AF07D
+      RouteTableId:
+        Ref: SwisscomVPCWorkersSubnet3RouteTableC7365762
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/WorkersSubnet3/DefaultRoute
+  SwisscomVPCControlPlaneSubnet1Subnet46608ACB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-1a
+      CidrBlock: 172.16.64.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: ControlPlane
+        - Key: aws-cdk:subnet-type
+          Value: Isolated
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -ControlPlane-A
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/ControlPlaneSubnet1/Subnet
+  SwisscomVPCControlPlaneSubnet1RouteTable2861FCD7:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -ControlPlane-A
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/ControlPlaneSubnet1/RouteTable
+  SwisscomVPCControlPlaneSubnet1RouteTableAssociation9C16D627:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: SwisscomVPCControlPlaneSubnet1RouteTable2861FCD7
+      SubnetId:
+        Ref: SwisscomVPCControlPlaneSubnet1Subnet46608ACB
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/ControlPlaneSubnet1/RouteTableAssociation
+  SwisscomVPCControlPlaneSubnet2Subnet18775F2D:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-1b
+      CidrBlock: 172.16.65.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: ControlPlane
+        - Key: aws-cdk:subnet-type
+          Value: Isolated
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -ControlPlane-B
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/ControlPlaneSubnet2/Subnet
+  SwisscomVPCControlPlaneSubnet2RouteTableD5ECF213:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -ControlPlane-B
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/ControlPlaneSubnet2/RouteTable
+  SwisscomVPCControlPlaneSubnet2RouteTableAssociationC577E611:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: SwisscomVPCControlPlaneSubnet2RouteTableD5ECF213
+      SubnetId:
+        Ref: SwisscomVPCControlPlaneSubnet2Subnet18775F2D
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/ControlPlaneSubnet2/RouteTableAssociation
+  SwisscomVPCControlPlaneSubnet3Subnet69F710A2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-1c
+      CidrBlock: 172.16.66.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: ControlPlane
+        - Key: aws-cdk:subnet-type
+          Value: Isolated
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -ControlPlane-C
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/ControlPlaneSubnet3/Subnet
+  SwisscomVPCControlPlaneSubnet3RouteTableF8681D3C:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: VpcName
+                - -ControlPlane-C
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/ControlPlaneSubnet3/RouteTable
+  SwisscomVPCControlPlaneSubnet3RouteTableAssociation0CD4CE5F:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: SwisscomVPCControlPlaneSubnet3RouteTableF8681D3C
+      SubnetId:
+        Ref: SwisscomVPCControlPlaneSubnet3Subnet69F710A2
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/ControlPlaneSubnet3/RouteTableAssociation
+  SwisscomVPCIGWFD8C9F88:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            Ref: VpcName
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/IGW
+  SwisscomVPCVPCGW57F94AAE:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId:
+        Ref: SwisscomVPCIGWFD8C9F88
+      VpcId:
+        Ref: SwisscomVPC423AFC06
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/VPCGW
+  SwisscomVPCRestrictDefaultSecurityGroupCustomResource256AA0D5:
+    Type: Custom::VpcRestrictDefaultSG
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E
+          - Arn
+      DefaultSecurityGroupId:
+        Fn::GetAtt:
+          - SwisscomVPC423AFC06
+          - DefaultSecurityGroup
+      Account: "737247133878"
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: NetworkStack/SwisscomVPC/RestrictDefaultSecurityGroupCustomResource/Default
+  CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
+        Version: "2012-10-17"
         Statement:
           - Action: sts:AssumeRole
             Effect: Allow
             Principal:
               Service: lambda.amazonaws.com
-        Version: "2012-10-17"
       ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEC2ContainerRegistryPullOnly
-        - Fn::If:
-            - SwisscomEKSClusterHasEcrPublic2F4268D7
-            - Fn::Join:
-                - ""
-                - - "arn:"
-                  - Ref: AWS::Partition
-                  - :iam::aws:policy/AmazonElasticContainerRegistryPublicReadOnly
-            - Ref: AWS::NoValue
-      Tags:
-        - Key: ClusterType
-          Value: EKS
-        - Key: Environment
-          Value: Production
-        - Key: ManagedBy
-          Value: CDK
-        - Key: Project
-          Value: SwisscomAssessment
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: Inline
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:AuthorizeSecurityGroupEgress
+                  - ec2:RevokeSecurityGroupIngress
+                  - ec2:RevokeSecurityGroupEgress
+                Resource:
+                  - Fn::Join:
+                      - ""
+                      - - arn:aws:ec2:eu-west-1:737247133878:security-group/
+                        - Fn::GetAtt:
+                            - SwisscomVPC423AFC06
+                            - DefaultSecurityGroup
     Metadata:
-      aws:cdk:path: ClusterStack/SwisscomEKSCluster/KubectlHandlerRole/Resource
-  SwisscomEKSClusterKubectlHandlerRoleDefaultPolicy01F6E471:
-    Type: AWS::IAM::Policy
+      aws:cdk:path: NetworkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Role
+  CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E:
+    Type: AWS::Lambda::Function
     Properties:
-      PolicyDocument:
-        Statement:
-          - Action: eks:DescribeCluster
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - SwisscomEKSCluster27D1F5A0
-                - Arn
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - SwisscomEKSClusterCreationRoleC16F1072
-                - Arn
-        Version: "2012-10-17"
-      PolicyName: SwisscomEKSClusterKubectlHandlerRoleDefaultPolicy01F6E471
-      Roles:
-        - Ref: SwisscomEKSClusterKubectlHandlerRole0DF7DC5F
-    Metadata:
-      aws:cdk:path: ClusterStack/SwisscomEKSCluster/KubectlHandlerRole/DefaultPolicy/Resource
-  SwisscomEKSClusterControlPlaneSecurityGroup7B7327C7:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: EKS Control Plane Security Group
-      SecurityGroupEgress:
-        - CidrIp: 0.0.0.0/0
-          Description: Allow all outbound traffic by default
-          IpProtocol: "-1"
-      Tags:
-        - Key: ClusterType
-          Value: EKS
-        - Key: Environment
-          Value: Production
-        - Key: ManagedBy
-          Value: CDK
-        - Key: Project
-          Value: SwisscomAssessment
-      VpcId:
-        Fn::ImportValue: NetworkStack:ExportsOutputRefSwisscomVPC423AFC062A504B3F
-    Metadata:
-      aws:cdk:path: ClusterStack/SwisscomEKSCluster/ControlPlaneSecurityGroup/Resource
-  SwisscomEKSClusterCreationRoleC16F1072:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              AWS:
-                - Fn::GetAtt:
-                    - SwisscomEKSClusterKubectlHandlerRole0DF7DC5F
-                    - Arn
-                - Fn::GetAtt:
-                    - awscdkawseksClusterResourceProviderNestedStackawscdkawseksClusterResourceProviderNestedStackResource9827C454
-                    - Outputs.ClusterStackawscdkawseksClusterResourceProviderIsCompleteHandlerServiceRoleC5FDB7CBArn
-                - Fn::GetAtt:
-                    - awscdkawseksClusterResourceProviderNestedStackawscdkawseksClusterResourceProviderNestedStackResource9827C454
-                    - Outputs.ClusterStackawscdkawseksClusterResourceProviderOnEventHandlerServiceRoleF1CFB156Arn
-        Version: "2012-10-17"
-      Tags:
-        - Key: ClusterType
-          Value: EKS
-        - Key: Environment
-          Value: Production
-        - Key: ManagedBy
-          Value: CDK
-        - Key: Project
-          Value: SwisscomAssessment
-    Metadata:
-      aws:cdk:path: ClusterStack/SwisscomEKSCluster/Resource/CreationRole/Resource
-  SwisscomEKSClusterCreationRoleDefaultPolicyCC700C69:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyDocument:
-        Statement:
-          - Action: iam:PassRole
-            Effect: Allow
-            Resource:
-              Fn::GetAtt:
-                - ClusterServiceRoleBFF38747
-                - Arn
-          - Action:
-              - eks:CreateCluster
-              - eks:CreateFargateProfile
-              - eks:DeleteCluster
-              - eks:DescribeCluster
-              - eks:DescribeUpdate
-              - eks:TagResource
-              - eks:UntagResource
-              - eks:UpdateClusterConfig
-              - eks:UpdateClusterVersion
-            Effect: Allow
-            Resource:
-              - arn:aws:eks:eu-west-1:737247133878:cluster/SwisscomCluster
-              - arn:aws:eks:eu-west-1:737247133878:cluster/SwisscomCluster/*
-          - Action:
-              - eks:DeleteFargateProfile
-              - eks:DescribeFargateProfile
-            Effect: Allow
-            Resource: arn:aws:eks:eu-west-1:737247133878:fargateprofile/SwisscomCluster/*
-          - Action:
-              - ec2:DescribeDhcpOptions
-              - ec2:DescribeInstances
-              - ec2:DescribeNetworkInterfaces
-              - ec2:DescribeRouteTables
-              - ec2:DescribeSecurityGroups
-              - ec2:DescribeSubnets
-              - ec2:DescribeVpcs
-              - iam:CreateServiceLinkedRole
-              - iam:GetRole
-              - iam:listAttachedRolePolicies
-            Effect: Allow
-            Resource: "*"
-        Version: "2012-10-17"
-      PolicyName: SwisscomEKSClusterCreationRoleDefaultPolicyCC700C69
-      Roles:
-        - Ref: SwisscomEKSClusterCreationRoleC16F1072
-    Metadata:
-      aws:cdk:path: ClusterStack/SwisscomEKSCluster/Resource/CreationRole/DefaultPolicy/Resource
-  SwisscomEKSCluster27D1F5A0:
-    Type: Custom::AWSCDK-EKS-Cluster
-    Properties:
-      ServiceToken:
+      Code:
+        S3Bucket: cdk-hnb659fds-assets-737247133878-eu-west-1
+        S3Key: 7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200.zip
+      Timeout: 900
+      MemorySize: 128
+      Handler: __entrypoint__.handler
+      Role:
         Fn::GetAtt:
-          - awscdkawseksClusterResourceProviderNestedStackawscdkawseksClusterResourceProviderNestedStackResource9827C454
-          - Outputs.ClusterStackawscdkawseksClusterResourceProviderframeworkonEvent74B2E770Arn
-      Config:
-        name: SwisscomCluster
-        version: "1.33"
-        roleArn:
-          Fn::GetAtt:
-            - ClusterServiceRoleBFF38747
-            - Arn
-        kubernetesNetworkConfig:
-          ipFamily: ipv4
-        resourcesVpcConfig:
-          subnetIds:
-            - Fn::ImportValue: NetworkStack:ExportsOutputRefSwisscomVPCWorkersSubnet1SubnetD75254CE334547A1
-            - Fn::ImportValue: NetworkStack:ExportsOutputRefSwisscomVPCWorkersSubnet2SubnetB1A70A6E7EB74BF3
-            - Fn::ImportValue: NetworkStack:ExportsOutputRefSwisscomVPCWorkersSubnet3SubnetE5472EB62D37FF91
-          securityGroupIds:
-            - Fn::GetAtt:
-                - SwisscomEKSClusterControlPlaneSecurityGroup7B7327C7
-                - GroupId
-          endpointPublicAccess: true
-          endpointPrivateAccess: true
-        accessConfig:
-          authenticationMode: API_AND_CONFIG_MAP
-          bootstrapClusterCreatorAdminPermissions: true
-      AssumeRoleArn:
-        Fn::GetAtt:
-          - SwisscomEKSClusterCreationRoleC16F1072
+          - CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0
           - Arn
-      AttributesRevision: 5
+      Runtime: nodejs22.x
+      Description: Lambda function for removing all inbound/outbound rules from the VPC default security group
     DependsOn:
-      - SwisscomEKSClusterCreationRoleDefaultPolicyCC700C69
-      - SwisscomEKSClusterCreationRoleC16F1072
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
+      - CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0
     Metadata:
-      aws:cdk:path: ClusterStack/SwisscomEKSCluster/Resource/Resource/Default
-  SwisscomEKSClusterKubectlReadyBarrier1C39FEC4:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Type: String
-      Value: aws:cdk:eks:kubectl-ready
-    DependsOn:
-      - SwisscomEKSClusterCreationRoleDefaultPolicyCC700C69
-      - SwisscomEKSClusterCreationRoleC16F1072
-      - SwisscomEKSCluster27D1F5A0
-    Metadata:
-      aws:cdk:path: ClusterStack/SwisscomEKSCluster/KubectlReadyBarrier
-  SwisscomEKSClusterNodegroupWorkerNodes2451F550:
-    Type: AWS::EKS::Nodegroup
-    Properties:
-      AmiType: AL2_x86_64
-      CapacityType: ON_DEMAND
-      ClusterName:
-        Ref: SwisscomEKSCluster27D1F5A0
-      DiskSize: 20
-      ForceUpdateEnabled: true
-      InstanceTypes:
-        - m5.medium
-      NodeRole:
-        Fn::GetAtt:
-          - NodeGroupRoleB2FF2978
-          - Arn
-      NodegroupName: Default
-      ScalingConfig:
-        DesiredSize: 2
-        MaxSize: 5
-        MinSize: 2
-      Subnets:
-        - Fn::ImportValue: NetworkStack:ExportsOutputRefSwisscomVPCWorkersSubnet1SubnetD75254CE334547A1
-        - Fn::ImportValue: NetworkStack:ExportsOutputRefSwisscomVPCWorkersSubnet2SubnetB1A70A6E7EB74BF3
-        - Fn::ImportValue: NetworkStack:ExportsOutputRefSwisscomVPCWorkersSubnet3SubnetE5472EB62D37FF91
-      Tags:
-        ClusterType: EKS
-        Environment: Production
-        ManagedBy: CDK
-        Name: SwisscomEKS-WorkerNode
-        NodeGroup: Default
-        Project: SwisscomAssessment
-    Metadata:
-      aws:cdk:path: ClusterStack/SwisscomEKSCluster/NodegroupWorkerNodes/Resource
-  SwisscomEKSClusterAwsAuthmanifest07BD5C83:
-    Type: Custom::AWSCDK-EKS-KubernetesResource
-    Properties:
-      ServiceToken:
-        Fn::GetAtt:
-          - awscdkawseksKubectlProviderNestedStackawscdkawseksKubectlProviderNestedStackResourceA7AEBA6B
-          - Outputs.ClusterStackawscdkawseksKubectlProviderframeworkonEvent8D73200DArn
-      Manifest:
-        Fn::Join:
-          - ""
-          - - '[{"apiVersion":"v1","kind":"ConfigMap","metadata":{"name":"aws-auth","namespace":"kube-system","labels":{"aws.cdk.eks/prune-c80616e99a4c264a44fdee8354220cf379ce544d2b":""}},"data":{"mapRoles":"[{\"rolearn\":\"'
-            - Fn::GetAtt:
-                - NodeGroupRoleB2FF2978
-                - Arn
-            - \",\"username\":\"system:node:{{EC2PrivateDNSName}}\",\"groups\":[\"system:bootstrappers\",\"system:nodes\"]}]","mapUsers":"[]","mapAccounts":"[]"}}]
-      ClusterName:
-        Ref: SwisscomEKSCluster27D1F5A0
-      RoleArn:
-        Fn::GetAtt:
-          - SwisscomEKSClusterCreationRoleC16F1072
-          - Arn
-      PruneLabel: aws.cdk.eks/prune-c80616e99a4c264a44fdee8354220cf379ce544d2b
-      Overwrite: true
-    DependsOn:
-      - SwisscomEKSClusterKubectlReadyBarrier1C39FEC4
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-    Metadata:
-      aws:cdk:path: ClusterStack/SwisscomEKSCluster/AwsAuth/manifest/Resource/Default
-  awscdkawseksClusterResourceProviderNestedStackawscdkawseksClusterResourceProviderNestedStackResource9827C454:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      Tags:
-        - Key: Environment
-          Value: Production
-        - Key: Project
-          Value: SwisscomAssessment
-      TemplateURL:
-        Fn::Join:
-          - ""
-          - - https://s3.eu-west-1.
-            - Ref: AWS::URLSuffix
-            - /cdk-hnb659fds-assets-737247133878-eu-west-1/bd336dba84b1d2a6b231504e06d6f6fc3de7f100c1419e305048cb59ca30fb4b.json
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-    Metadata:
-      aws:cdk:path: ClusterStack/@aws-cdk--aws-eks.ClusterResourceProvider.NestedStack/@aws-cdk--aws-eks.ClusterResourceProvider.NestedStackResource
-      aws:asset:path: ClusterStackawscdkawseksClusterResourceProviderFB371BF6.nested.template.json
-      aws:asset:property: TemplateURL
-  awscdkawseksKubectlProviderNestedStackawscdkawseksKubectlProviderNestedStackResourceA7AEBA6B:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      Parameters:
-        referencetoClusterStackKubectlA0ACB7D0Ref:
-          Ref: Kubectl85A5A23F
-        referencetoClusterStackSwisscomEKSClusterKubectlHandlerRoleDEE8582EArn:
-          Fn::GetAtt:
-            - SwisscomEKSClusterKubectlHandlerRole0DF7DC5F
-            - Arn
-        referencetoClusterStackSwisscomEKSClusterD5475F26ClusterSecurityGroupId:
-          Fn::GetAtt:
-            - SwisscomEKSCluster27D1F5A0
-            - ClusterSecurityGroupId
-      Tags:
-        - Key: Environment
-          Value: Production
-        - Key: Project
-          Value: SwisscomAssessment
-      TemplateURL:
-        Fn::Join:
-          - ""
-          - - https://s3.eu-west-1.
-            - Ref: AWS::URLSuffix
-            - /cdk-hnb659fds-assets-737247133878-eu-west-1/33e18418420f6d894ff79179935a38cb743761b239eb086979478616130c3441.json
-    DependsOn:
-      - SwisscomEKSClusterKubectlHandlerRoleDefaultPolicy01F6E471
-      - SwisscomEKSClusterKubectlHandlerRole0DF7DC5F
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-    Metadata:
-      aws:cdk:path: ClusterStack/@aws-cdk--aws-eks.KubectlProvider.NestedStack/@aws-cdk--aws-eks.KubectlProvider.NestedStackResource
-      aws:asset:path: ClusterStackawscdkawseksKubectlProviderA827E1EA.nested.template.json
-      aws:asset:property: TemplateURL
-  NodeGroupRoleB2FF2978:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-        Version: "2012-10-17"
-      ManagedPolicyArns:
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEKSWorkerNodePolicy
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEKS_CNI_Policy
-        - Fn::Join:
-            - ""
-            - - "arn:"
-              - Ref: AWS::Partition
-              - :iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
-      Tags:
-        - Key: Environment
-          Value: Production
-        - Key: Project
-          Value: SwisscomAssessment
-    Metadata:
-      aws:cdk:path: ClusterStack/NodeGroupRole/Resource
+      aws:cdk:path: NetworkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Handler
+      aws:asset:path: asset.7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200
+      aws:asset:property: Code
   CDKMetadata:
     Type: AWS::CDK::Metadata
     Properties:
-      Analytics: v2:deflate64:H4sIAAAAAAAA/91W3U/bMBD/W5bHyQ3QbGjiaSFsCEFLVRAvqIpc+yheEzuynUIX9X/fOXGaMLYJNuBhD1Hs+/Dd/e7DHobVcO9juPuO3pkB48tBJuZhdWEpWxIkpZWgeVhNVQbXVUCNKXPgh+vgoAoKLSQTBc1ixlQpbXAQvA+Il3EKMbNCyZq8IUFOJV0An6hMMAEmOMDz+rR1rL3sbEPe1hTnl2rSmmgknI7nWsTi9kRmQsKWh7pPYHI+6lt9gh//Kt8z/aeQ/hrb7uyfj3w9DJ9t7D9SWWjqMnJdp6SF5E06gzybMdvMSHIjnVHSsGq32wRfKsd5lPfHZM5x+ljIQVrzAKfH5Nc+/xXJNVYNTBtiohQzBtaEsfvhPjws2RLsITVwPSMZzeechqhxRtegr0AbTCqBpQmrJCuNBY2JXDVkXwKsoY9pDp6iayDq5apg3eqinEtoHAtMvb5cF04Sy3KFbmNqSbAs58BsVttvi6y0txiRYNSV2EhxpxNPTtJ4fJQm5+OvJ8fpKJ6gJEheKCEtFikY49XnSlljNS18BIkGapWOeS7kBHQujIsGpa0ugQQcbmiZ2YQWlAm73hYjgjtG0wutyqJjtqWXCx9LfDZM7z/tp/sfHDZezvPOx+nRlxF6HTgzRmjgF+J7ixUXZtnb5vS+vxOyt5OtIz3UHW3aIW/pwnT9svUcofcJa8F9ec+FNJZKBk7XvHg0rp634ZD4zsRYHuQUy0ZjRYHBq0rcgLEbAmyILwxgpcZAjn30XUViHEyLohtb9dEP5PEemoJRpWbQjsb2m5G6hbDfFkIuSIKYqvx3wr/6miHmFdw6UZIL503tRv0wwsV5aYsSg9nFp9Nn/3baafp0kLkmGfiOGayiKDxt1ldRVDeQH0aTtb1VcicK9yI85ZsRYqBxhoscwmnz/wHp4jwZngkAAA==
+      Analytics: v2:deflate64:H4sIAAAAAAAA/+2XzW/TMBTA/xZ8RG5gnYTEbl1AEAnWqJ12YJrQi+22pokd+SOjVP3feU6cVurQOMDBh51sv6/8bMd+z9NsevE+e/sKHu2E8e2kllW2XzpgW5qvVAkGGuGEoaj/Ltg029+17H5PhIKqFh+U/aytU2hjyZUzXtCTZunbVhs3ymU749wIa4MpeU0oaeDn7Nc4UOA+gROPsHsqWfpKCYfyPbF993bXCrQqfVVLRg40inOtVnLtDTipFblCzEAWw/3JkxImufkKdntEagdV0c7VF/CKbQb+A30mmJEdgp5He86lsLpGF/7E54GSrmU3oxuOcRfuypwOWMNK4MSgA1lDJWvpdt+0Gj+CvgWP/RD4utbsr3MLe9O9y8/MwVq5VgVq4r7NVW5EXNo4vSQoehDOb46/C+48ah6SAUyDIhmQNCiGkzWcp9BbaO/Ebbi6TvKTbGatZrIPcDQOnY9FGZrTv0fjZfDfD+oKapvAmv8bRjokiWCkQ5IIRjokLxgvGElj9AmsUFicY6YZ089QLcbRzGEdv2mEcge6EFZ7w8Q9unnrdHMUhFqpT2pRcKYvje4kF+YakBTzoHD4OlhLtQ4+c+9aj9HLndto9eYyu7jEt8QPK+XEeOVkI7LF0P4G0l7ZzGgMAAA=
     Metadata:
-      aws:cdk:path: ClusterStack/CDKMetadata/Default
-Conditions:
-  SwisscomEKSClusterHasEcrPublic2F4268D7:
-    Fn::Equals:
-      - Ref: AWS::Partition
-      - aws
+      aws:cdk:path: NetworkStack/CDKMetadata/Default
 Outputs:
-  ClusterNameOutput:
+  VpcId:
     Value:
-      Ref: SwisscomEKSCluster27D1F5A0
-  ClusterEndpointOutput:
-    Value:
-      Fn::GetAtt:
-        - SwisscomEKSCluster27D1F5A0
-        - Endpoint
-  ClusterArnOutput:
-    Value:
-      Fn::GetAtt:
-        - SwisscomEKSCluster27D1F5A0
-        - Arn
-  KubeconfigUpdateCommand:
-    Description: Run this command locally to configure kubectl access
+      Ref: SwisscomVPC423AFC06
+  AvailabilityZones:
+    Value: eu-west-1a,eu-west-1b,eu-west-1c
+  PublicSubnetCount:
+    Value: "3"
+  PrivateSubnetCount:
+    Value: "3"
+  IsolatedSubnetCount:
+    Value: "3"
+  PrivateSubnetIds:
     Value:
       Fn::Join:
         - ""
-        - - "aws eks update-kubeconfig --name "
-          - Ref: SwisscomEKSCluster27D1F5A0
-          - " --region eu-west-1"
-Parameters:
-  BootstrapVersion:
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /cdk-bootstrap/hnb659fds/version
-    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]
+        - - Ref: SwisscomVPCWorkersSubnet1SubnetD75254CE
+          - ","
+          - Ref: SwisscomVPCWorkersSubnet2SubnetB1A70A6E
+          - ","
+          - Ref: SwisscomVPCWorkersSubnet3SubnetE5472EB6
+  IsolatedSubnetIds:
+    Value:
+      Fn::Join:
+        - ""
+        - - Ref: SwisscomVPCControlPlaneSubnet1Subnet46608ACB
+          - ","
+          - Ref: SwisscomVPCControlPlaneSubnet2Subnet18775F2D
+          - ","
+          - Ref: SwisscomVPCControlPlaneSubnet3Subnet69F710A2
+  ExportsOutputRefSwisscomVPC423AFC062A504B3F:
+    Value:
+      Ref: SwisscomVPC423AFC06
+    Export:
+      Name: NetworkStack:ExportsOutputRefSwisscomVPC423AFC062A504B3F
+  ExportsOutputRefSwisscomVPCWorkersSubnet1SubnetD75254CE334547A1:
+    Value:
+      Ref: SwisscomVPCWorkersSubnet1SubnetD75254CE
+    Export:
+      Name: NetworkStack:ExportsOutputRefSwisscomVPCWorkersSubnet1SubnetD75254CE334547A1
+  ExportsOutputRefSwisscomVPCWorkersSubnet2SubnetB1A70A6E7EB74BF3:
+    Value:
+      Ref: SwisscomVPCWorkersSubnet2SubnetB1A70A6E
+    Export:
+      Name: NetworkStack:ExportsOutputRefSwisscomVPCWorkersSubnet2SubnetB1A70A6E7EB74BF3
+  ExportsOutputRefSwisscomVPCWorkersSubnet3SubnetE5472EB62D37FF91:
+    Value:
+      Ref: SwisscomVPCWorkersSubnet3SubnetE5472EB6
+    Export:
+      Name: NetworkStack:ExportsOutputRefSwisscomVPCWorkersSubnet3SubnetE5472EB62D37FF91
 
