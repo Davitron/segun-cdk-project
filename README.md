@@ -171,7 +171,7 @@ pytest tests/unit/test_lambda_handler.py
 
 ### Run Tests with Coverage
 ```bash
-pytest --cov=stacks --cov=assets --cov-report=html
+pytest --cov=stacks --cov=assets --cov-report=html --cov-report=term
 ```
 
 ### Test Categories
@@ -190,9 +190,6 @@ pylint stacks/ assets/ tests/ app.py
 
 # Lint specific module
 pylint stacks/network/network_stack.py
-
-# Generate pylint report
-pylint stacks/ assets/ tests/ app.py --output-format=html > pylint-report.html
 ```
 
 ### Pylint Configuration
@@ -201,12 +198,6 @@ Pylint settings are configured in `.pylintrc`:
 - Line length: 150 characters
 - Ignores: `.venv`, `__pycache__`, `.git`, `.pytest_cache`, `cdk.out`
 
-
-### Code Style Guidelines
-- **Docstrings**: All modules, classes, and functions must have docstrings
-- **Type Hints**: Use type annotations for function parameters and returns
-- **Imports**: Group imports (standard library, third-party, local)
-- **Line Length**: Maximum 100 characters
 
 ## Project Structure
 

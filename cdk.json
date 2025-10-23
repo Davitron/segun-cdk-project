@@ -95,23 +95,23 @@
     "@aws-cdk/aws-ec2:requirePrivateSubnetsForEgressOnlyInternetGateway": true,
     "@aws-cdk/aws-s3:publicAccessBlockedByDefault": true,
     "@aws-cdk/aws-lambda:useCdkManagedLogGroup": true,
-    "service_name": "segun-cdk-project",
+    "service_name": "your-service-name",
     "dev": {
       "env": "development",
-      "account_id": "737247133878",
-      "region": "eu-west-1",
+      "account_id": "123456789012",
+      "region": "us-east-1",
       "vpc_cidr": "172.16.0.0/16"
     },
     "stg": {
-      "env": "staging",
-      "account_id": "737247133878",
-      "region": "eu-west-1",
+      "env": "staging", 
+      "account_id": "123456789012",
+      "region": "us-east-1",
       "vpc_cidr": "10.0.0.0/16"
     },
     "prod": {
       "env": "production",
-      "account_id": "737247133878",
-      "region": "eu-west-1",
+      "account_id": "987654321098",
+      "region": "us-east-1", 
       "vpc_cidr": "10.50.0.0/16"
     }
   }
