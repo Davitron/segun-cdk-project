@@ -6,6 +6,11 @@ A multi-environment AWS CDK project that deploys a complete EKS (Kubernetes) pla
 
 ![Architecture Diagram](./arch.png)
 
+This project builds a complete Kubernetes platform on AWS using three main components that work together: first we create the network foundation with VPC and subnets, then we add the EKS cluster on top of that network, and finally we deploy the Nginx ingress controller to handle incoming traffic. The ingress controller includes a custom Lambda function that automatically adjusts the number of replicas based on the environment. One replica for development and two for staging/production. Each environment (development/staging/production) gets its own isolated setup with different configurations.
+
+#### Why this approach?
+Breaking the infrastructure into separate, dependent stacks makes deployments more reliable and easier to manage. You can deploy just the network changes without touching the cluster, or update the ingress controller independently.
+
 ## Stack Dependencies
 
 1. **NetworkStack** → Creates VPC infrastructure (no dependencies)
