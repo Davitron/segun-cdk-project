@@ -13,7 +13,7 @@ the computed replica count via the Data.ReplicaCount attribute.
 import os
 import traceback
 import boto3
-from botocore.exceptions import ClientError, BotoCoreError
+from botocore.exceptions import ClientError
 
 ssm = boto3.client("ssm")
 
@@ -50,11 +50,7 @@ def _get_env_value(param_name: str) -> str:
         if error_code == "ParameterNotFound":
             print(f"Parameter {param_name} not found; falling back to development")
             return "development"
-        # Other client errors: log and fallback
         print(f"ClientError retrieving {param_name}: {error_code}. Fallback to development")
-        return "development"
-    except BotoCoreError as e:
-        print(f"BotoCoreError retrieving {param_name}: {e}. Fallback to development")
         return "development"
     except Exception:
         print("Unexpected exception retrieving", param_name, traceback.format_exc())
