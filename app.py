@@ -14,19 +14,34 @@ from stacks.platform.nginx_ingress_stack import NginxIngressStack
 
 app = cdk.App()
 
+
+env_name = app.node.try_get_context("environment") or "dev"
+env_context = app.node.try_get_context(env_name)
+if not env_context:
+    raise ValueError(f"No context found for environment '{env_name}'. Available environments: dev, stg, prod")
+
+service_name = app.node.try_get_context("service_name")
+if not service_name:
+    raise ValueError("No 'service_name' found in context")
+
 env = cdk.Environment(
-    account="737247133878",
-    region="eu-west-1"
+    account=env_context["account_id"],
+    region=env_context["region"]
 )
+
+print(f"Synthesizing stacks for environment: {env_name} (Account: {env.account}, Region: {env.region})")
 
 # Create network stack
 network_stack = NetworkStack(app, "NetworkStack",
-    vpc_cidr="172.16.0.0/16",
+    service_name=service_name,
+    vpc_cidr=env_context["vpc_cidr"],
     env=env
 )
 
 # Create cluster stack that depends on network stack
 cluster_stack = ClusterStack(app, "ClusterStack",
+    service_name=service_name,
+    environment_name=env_context["env"],
     vpc=network_stack.vpc,
     env=env
 )

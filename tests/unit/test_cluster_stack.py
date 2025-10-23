@@ -11,7 +11,7 @@ from stacks.cluster.cluster_stacks import ClusterStack
 from stacks.network.network_stack import NetworkStack
 
 
-def synth_cluster_stack(vpc_cidr: str = "172.16.0.0/16"):
+def synth_cluster_stack():
     """Synthesize cluster stack with network dependency for testing.
 
     Args:
@@ -22,8 +22,17 @@ def synth_cluster_stack(vpc_cidr: str = "172.16.0.0/16"):
     """
     app = cdk.App()
     env = cdk.Environment(account="111111111111", region="eu-west-1")
-    network_stack = NetworkStack(app, "NetworkStackTest", env=env)
-    cluster_stack = ClusterStack(app, "ClusterStackTest", vpc=network_stack.vpc, env=env)
+    network_stack = NetworkStack(app, "NetworkStackTest",
+        service_name="test-service",
+        vpc_cidr="172.16.0.0/16",
+        env=env
+    )
+    cluster_stack = ClusterStack(app, "ClusterStackTest",
+        service_name="test-cluster",
+        environment_name="test-dev",
+        vpc=network_stack.vpc,
+        env=env
+    )
     cluster_stack.add_dependency(network_stack)
     template = Template.from_stack(cluster_stack)
     return cluster_stack, template
@@ -43,7 +52,7 @@ def test_cluster_name_and_version():
     })
 
     cluster_config_as_dict = capture_cluster_config.as_object()
-    assert cluster_config_as_dict.get("name", "").startswith("SwisscomCluster"), "Cluster name does not match expected value"
+    assert cluster_config_as_dict.get("name", "").startswith("test-cluster"), "Cluster name does not match expected value"
     assert cluster_config_as_dict.get("version") == "1.33", "Cluster version does not match expected value"
 
 
