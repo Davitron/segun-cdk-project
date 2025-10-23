@@ -4,7 +4,8 @@ Tests VPC creation, subnet counts, Kubernetes/ELB tagging, AZ distribution,
 NAT/IGW presence, and route tables. Validates that subnets are properly tagged
 for EKS cluster discovery and load balancer provisioning.
 """
-
+import ipaddress
+import pytest
 import aws_cdk as cdk
 from aws_cdk.assertions import Template
 from stacks.network.network_stack import NetworkStack
@@ -12,15 +13,8 @@ from stacks.network.network_stack import NetworkStack
 def _cluster_tag_present(tags):
     """Check if Kubernetes cluster discovery tag is present in subnet tags."""
     return any(
-        t.get("Value") == "shared" and (
-            (
-                isinstance(t.get("Key"), dict) and "Fn::Join" in t["Key"] and
-                "kubernetes.io/cluster/" in "".join(
-                    p if isinstance(p, str) else ""
-                    for p in t["Key"]["Fn::Join"][1]
-                )
-            )
-        )
+        t.get("Value") == "shared" and
+            (isinstance(t.get("Key"), str) and t.get("Key").startswith("kubernetes.io/cluster/"))
         for t in tags
     )
 
@@ -35,9 +29,11 @@ def _subnet_type(tags):
 def synth_network_stack(vpc_cidr: str = "172.16.0.0/16"):
     """Synthesize a NetworkStack for testing with the specified VPC CIDR."""
     app = cdk.App()
+    env = cdk.Environment(account="111111111111", region="eu-west-1")
     stack = NetworkStack(app, "NetworkStackTest",
-                vpc_cidr=vpc_cidr,
-                env=cdk.Environment(account="111111111111", region="eu-west-1")
+        service_name="test-service",
+        vpc_cidr=vpc_cidr,
+        env=env
     )
     template = Template.from_stack(stack)
     return stack, template
@@ -117,3 +113,38 @@ def test_route_tables_created():
         if res["Type"] == "AWS::EC2::RouteTable"
     ]
     assert len(route_tables) == 6, f"Expected 6 Route Tables (3 per subnet type), found {len(route_tables)}"
+
+
+def test_valid_cidr_formats():
+    """Test VPC accepts valid CIDR format strings."""
+    valid_cidrs = [
+        "10.0.0.0/16",
+        "172.16.0.0/16", 
+        "192.168.0.0/16"
+    ]
+    for cidr in valid_cidrs:
+        ipaddress.ip_network(cidr)
+        _, template = synth_network_stack(vpc_cidr=cidr)
+        template.has_resource_properties("AWS::EC2::VPC", {
+            "CidrBlock": cidr
+        })
+
+
+def test_invalid_vpc_cidr():
+    """Test NetworkStack rejects invalid VPC CIDR formats."""
+    invalid_cidrs = [
+        "10.0.0.0",           # Missing subnet mask
+        "10.0.0.0/",          # Empty subnet mask
+        "10.0.0.0/33",        # Invalid subnet mask (>32)
+        "256.0.0.0/16",       # Invalid IP (256 > 255)
+        "10.0.0.0/-1",        # Negative subnet mask
+        "not-an-ip/16",       # Non-IP string
+        "",                   # Empty string
+        "10.0.0.0/abc",       # Non-numeric subnet mask
+        "10.0.0.256/16",      # Invalid IP octet
+        "10.0.0.0/16/24"      # Multiple slashes
+    ]
+    for invalid_cidr in invalid_cidrs:
+        with pytest.raises((ValueError, Exception)) as exc_info:
+            synth_network_stack(vpc_cidr=invalid_cidr)
+        assert exc_info.value is not None, f"Expected error for invalid CIDR: {invalid_cidr}"

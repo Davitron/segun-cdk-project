@@ -28,13 +28,17 @@ class ClusterStack(Stack):
     IAM access entries, logging, and exports cluster connection details.
     """
 
-    def __init__(self, scope: Construct, construct_id: str, vpc: ec2.IVpc = None, **kwargs) -> None:
+    def __init__(self,
+                scope: Construct,
+                construct_id: str,
+                service_name: str,
+                environment_name: str,
+                vpc: ec2.IVpc = None,
+                **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # Use context for cluster name to ensure a plain string
-        # (run with: cdk deploy -c clusterName=SwisscomCluster)
-        cluster_name_str = self.node.try_get_context("clusterName") or "SwisscomCluster"
-        cluster_env_context = self.node.try_get_context("environment") or "development"
+        cluster_name_str = service_name
+        cluster_env_context = environment_name
 
         # Create EKS Cluster Service Role
         cluster_role = iam.Role(self, "ClusterServiceRole",

@@ -17,8 +17,17 @@ def synth_platform_stack():
     """Synthesize platform stack with network and cluster dependencies for testing."""
     app = cdk.App()
     env = cdk.Environment(account="111111111111", region="eu-west-1")
-    network_stack = NetworkStack(app, "NetworkStackTest", env=env)
-    cluster_stack = ClusterStack(app, "ClusterStackTest", vpc=network_stack.vpc, env=env)
+    network_stack = NetworkStack(app, "NetworkStackTest",
+        service_name="test-service",
+        vpc_cidr="172.16.0.0/16", env=env
+    )
+    cluster_stack = ClusterStack(app,
+        "ClusterStackTest",
+        service_name="test-service",
+        environment_name="test-dev",
+        vpc=network_stack.vpc,
+        env=env
+    )
     nginx_ingress_stack = NginxIngressStack(app, "NginxIngressStackTest", cluster=cluster_stack.cluster, env=env)
     cluster_stack.add_dependency(network_stack)
     nginx_ingress_stack.add_dependency(cluster_stack)
